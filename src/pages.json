@@ -7,7 +7,7 @@
 			}
 		},
     {
-			"path": "pages/music/songsheet/songsheet",
+			"path": "pages/music/songsheet/songdetail",
 			"style": {
 				"navigationStyle": "custom"
 			}
@@ -20,6 +20,12 @@
 		}, 
     {
 			"path": "pages/web-view/web-view",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+    {
+			"path": "pages/music/songsheet/songsheet",
 			"style": {
 				"navigationStyle": "custom"
 			}

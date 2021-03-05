@@ -57,7 +57,7 @@
                   <u-icon name="list-dot" size="50" /></view>
             </view>
             <view v-for="(item, index) in songsurls" :key="item.id" class="songlist"  >
-                <view style="display: flex"  @click="setindex(index)"  :class="[index===show?'titlecolor':'']">
+                <view style="display: flex"  @tap="playsong(index)"  :class="index === title ? 'titlecolor':''">
                     <view>{{ index+1 }}</view>
                         <view class="song">
                             <view class="songname"> {{ item.name }}</view>
@@ -68,9 +68,27 @@
                 </view>
                 <view style="margin-right: 20upx;"><image src='../../../static/icons/more.png' mode="aspectFit" /></view>
             </view>
-            <view></view>
           </view>
       </view>
+        <view v-if="songsurls[title]" class="footer">
+          <view class="img" @click="gotosongs()">
+            <image :src="songsurls[title].al.picUrl" mode="aspectFit"  />
+          </view>
+          <view class="author" @click="gotosongs()">
+            {{ songsurls[title].name + '----' + songsurls[title].ar[0].name }}
+          </view>
+          <view class="footericon">
+            <view class="playicon" @click="last_song">
+              <u-icon name="rewind-left-fill" size="30" />
+            </view>
+            <view class="playicon" @click="pause">
+              <u-icon :name="paused ? 'play-right-fill' : 'pause'" size="30" />
+            </view>
+            <view class="playicon" @click="next_song">
+              <u-icon name="rewind-right-fill" size="30" />
+            </view>
+          </view>
+        </view>
     </view>
 </template>
 <style lang="scss" scoped>
@@ -156,16 +174,47 @@
     width: 81upx;
     height: 81upx;
   }
+}   
+.footer{
+  position:fixed;
+  bottom:0;
+  display: flex;
+  width: 90%;
+  height: 100upx;
+  margin: auto 5%;
+  margin-bottom: 10upx;
+  background-color: rgb(183, 184, 202);
+  border-radius: 15px;
+  .img{
+    border-radius: 15px;
+    image{
+      margin: auto;
+      border-radius: 15px;
+      width: 100upx;
+      height: 100upx;
+    }
+  }
+  .author{
+    color: rgb(231, 231, 231);
+    margin: auto 30upx;
+  }
+  .footericon{
+    display: flex;
+    margin: auto 30upx;
+    .playicon{
+      padding: 20upx;
+    }
+  }
 }
 </style>
 <script>
 import uniIcons from '../../../components/uni-icons/uni-icons.vue';
-import songsList from '../../../pages/music/components/songslist.vue';
 var that = null;
 const innerAudioContext = uni.getBackgroundAudioManager();
 export default {
     data () {
       return {
+        id: '',
         background:{
           backgroundColor: "rgb(150, 150, 150)",
         },
@@ -174,27 +223,21 @@ export default {
         textlist: [],
         songids: '',
         songsurls: [],
-        paused: false,
+        paused: true,
 			  recycled: false,
         now: '00:00',
         duration: '00:00',
         progress_max: 0,
         songsdetail: [],
-        title: 0,
+        title: -1,
         titlecss: 'titlecolor',
       }
     },
-    components: { uniIcons, songsList },
-    computed: {
-      show: function() {
-        console.log(this.title)
-        return  this.title;
-      }
-    },
+    components: { uniIcons },
     onLoad: function (option) {
-        console.log(option.id);
         this.request(option.id);
         that = this;
+        that.id = option.id;
         innerAudioContext.autoplay = false;
         innerAudioContext.onPlay(() => {
           uni.hideLoading();
@@ -230,9 +273,9 @@ export default {
           // console.log(that.time_format(innerAudioContext.currentTime))
           // console.log(that.time_format(innerAudioContext.duration))
         });
-        // innerAudioContext.onSeeked(function() {
-        //   innerAudioContext.play();
-        // });
+        //  innerAudioContext.onSeeked(function() {
+        //    innerAudioContext.play();
+        //  });
         innerAudioContext.onPause(function() {
           that.paused = true;
         });
@@ -242,16 +285,13 @@ export default {
         innerAudioContext.onEnded(() => {
            if (!that.recycled && that.title < that.songsurls.length - 1) {
                 that.title++;
-                innerAudioContext.src = that.songsfind(that.songsdetail, that.songsurls[that.title].id);
-                innerAudioContext.title = that.songsurls[that.title].name;
+                that.play();
               } else if (that.recycled) {
                 innerAudioContext.seek(0);
-                innerAudioContext.src = that.songsfind(that.songsdetail, that.songsurls[that.title].id);
-                innerAudioContext.title = that.songsurls[that.title].name;
+                that.play();
               } else if (!that.recycled && that.title == that.songsurls.length - 1) {
                 that.title = 0;
-                innerAudioContext.src = that.songsfind(that.songsdetail, that.songsurls[that.title].id);
-                innerAudioContext.title = that.songsurls[that.title].name;
+                that.play();
               }
         });
     },
@@ -341,14 +381,26 @@ export default {
           let m = Math.floor((second / 60) % 60) < 10 ? '0' + Math.floor((second / 60) % 60) : Math.floor((second / 60) % 60);
           let s = Math.floor(second % 60) < 10 ? '0' + Math.floor(second % 60) : Math.floor(second % 60);
           return `${m}:${s}`;
+        },
+
+      playsong (index) {
+        this.setindex(index);
+        setTimeout(() => {
+          this.play()
+        }, 100)
       },
+
       setindex (index) {
-        that.title = index;
-        console.log(this.title)
-        innerAudioContext.src = that.songsfind(that.songsdetail, that.songsurls[that.title].id);
-        innerAudioContext.title = that.songsurls[that.title].name;
-        console.log(innerAudioContext);
+        if (index !== this.title) {
+        this.title = index;
+        }
       },
+
+      play () { 
+        innerAudioContext.src = this.songsfind(this.songsdetail, this.songsurls[this.title].id);
+        innerAudioContext.title = this.songsurls[this.title].name;
+      },
+
       songsfind (arr, id) {
        const url = arr.find(item => {
           if (item.id === id) {
@@ -357,10 +409,53 @@ export default {
         })
         return url.url;
       },
+
+      last_song () {
+        if (that.playing != 0) {
+        this.title--;
+        this.play();
+        }
+      },
+
+      next_song () {
+        if (that.title < that.songsurls.length - 1) {
+        this.title++;
+        this.play();
+        } else if (that.title === that.songsurls.length - 1) {
+          this.title = 0;
+          this.play();
+          uni.pageScrollTo({
+					  scrollTop: 0
+				  });
+        } else {
+          console.log('do nothing ');
+        }
+      },
+
+      pause () {
+        if (innerAudioContext.paused) {
+            innerAudioContext.play();
+          } else {
+            innerAudioContext.pause();
+          }
+      },
+
       playall () {
         innerAudioContext.src = that.songsfind(that.songsdetail, that.songsurls[that.title].id);
         innerAudioContext.title = that.songsurls[that.title].name;
         innerAudioContext.play();
+      },
+
+      gotosongs () {
+        let routes = getCurrentPages(); // 获取当前打开过的页面路由数组
+        let curRoute = routes[routes.length - 1].route //获取当前页面路由
+        console.log(curRoute)
+        uni.navigateTo({ 
+          url:`songdetail?title=${this.title}&songs=${JSON.stringify(this.songsurls)}&songurl=${JSON.stringify(this.songsdetail)}`,
+          animationType: 'slide-in-bottom',
+          animationDuration: 200,
+          fail: e => { console.log(e)}
+          });
       },
     },
 }
